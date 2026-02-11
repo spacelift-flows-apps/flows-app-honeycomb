@@ -139,7 +139,8 @@ export const app = defineApp({
   http: {
     onRequest: async (input: any) => {
       // Validate the webhook secret from the Honeycomb header
-      const requestedSecret = input.request.headers?.["x-honeycomb-webhook-token"];
+      const requestedSecret = input.request.headers?.["X-Honeycomb-Webhook-Token"];
+      console.log(requestedSecret);
       const storedSecretPair = await kv.app.get("webhook_secret");
       const storedSecret = storedSecretPair?.value;
 
