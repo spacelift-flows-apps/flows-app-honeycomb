@@ -50,9 +50,6 @@ export const app = defineApp({
       const existingRecipientId = await kv.app.get("webhook_recipient_id");
 
       if (existingRecipientId?.value) {
-        console.log(
-          `Webhook recipient already exists: ${existingRecipientId.value}`,
-        );
         return {
           newStatus: "ready" as const,
         };
@@ -71,19 +68,14 @@ export const app = defineApp({
           type: "webhook",
           details: {
             webhook_name: `spacelift-flows-${crypto.randomUUID()}`,
-            webhook_url: `${input.app.http.url}/webhook?secret=${webhookSecret}`,
+            webhook_url: `${input.app.http.url}/webhook`,
             webhook_secret: webhookSecret,
           },
         },
       });
 
       const recipientId = recipientResult.id;
-      console.log(
-        `Webhook recipient created successfully with ID: ${recipientId}`,
-      );
-
       await kv.app.set({ key: "webhook_recipient_id", value: recipientId });
-      console.log(`Stored webhook recipient ID: ${recipientId}`);
 
       return {
         newStatus: "ready" as const,
@@ -107,15 +99,10 @@ export const app = defineApp({
       const recipientId = recipientIdPair?.value;
 
       if (!recipientId) {
-        console.log(
-          "No webhook recipient ID found in storage, skipping deletion",
-        );
         return {
           newStatus: "drained",
         };
       }
-
-      console.log(`Attempting to delete webhook recipient: ${recipientId}`);
 
       try {
         await honeycombFetch({
@@ -124,13 +111,10 @@ export const app = defineApp({
           baseUrl,
           endpoint: `/1/recipients/${recipientId}`,
         });
-        console.log(`Successfully deleted webhook recipient: ${recipientId}`);
       } catch (error) {
         // Treat 404 as success since the recipient is already gone
         if (error instanceof HoneycombApiError && error.statusCode === 404) {
-          console.log(
-            `Webhook recipient ${recipientId} not found (404) - treating as already deleted`,
-          );
+          // Already deleted, no action needed
         } else {
           throw error;
         }
@@ -138,7 +122,6 @@ export const app = defineApp({
 
       await kv.app.delete(["webhook_recipient_id"]);
       await kv.app.delete(["webhook_secret"]);
-      console.log("Cleaned up stored webhook data");
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(message);
@@ -155,10 +138,8 @@ export const app = defineApp({
 
   http: {
     onRequest: async (input: any) => {
-      console.log("Received webhook from Honeycomb");
-
-      // Validate the webhook secret from query parameters
-      const requestedSecret = input.request.query?.secret;
+      // Validate the webhook secret from the Honeycomb header
+      const requestedSecret = input.request.headers?.["x-honeycomb-webhook-token"];
       const storedSecretPair = await kv.app.get("webhook_secret");
       const storedSecret = storedSecretPair?.value;
 
@@ -167,7 +148,6 @@ export const app = defineApp({
         !storedSecret ||
         requestedSecret !== storedSecret
       ) {
-        console.log("Invalid webhook secret");
         await http.respond(input.request.requestId, {
           statusCode: 401,
           body: { error: "Unauthorized: Invalid webhook secret" },
@@ -186,8 +166,6 @@ export const app = defineApp({
       const payload = input.request.body;
 
       try {
-        console.log("Extracted trigger data:", payload);
-
         // Find blocks subscribed to trigger events
         const entityList = await blocks.list({
           typeIds: ["subscribeToTriggerV1"],
