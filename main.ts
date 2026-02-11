@@ -7,6 +7,7 @@ import {
   kv,
 } from "@slflows/sdk/v1";
 import { blocks as allBlocks } from "./blocks/index";
+import { honeycombFetch, HoneycombApiError } from "./utils/honeycombFetch";
 
 export const app = defineApp({
   name: "Honeycomb API",
@@ -38,22 +39,12 @@ export const app = defineApp({
 
     try {
       // Validate API credentials
-      const response = await fetch(`${baseUrl}/1/auth`, {
+      await honeycombFetch({
         method: "GET",
-        headers: {
-          "X-Honeycomb-Team": apiKey,
-        },
+        apiKey,
+        baseUrl,
+        endpoint: "/1/auth",
       });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        const errorMsg = `Honeycomb API validation failed: ${response.status} ${response.statusText} - ${errorText}`;
-        console.error(errorMsg);
-        return {
-          newStatus: "failed" as const,
-          customStatusDescription: "Honeycomb API validation failed",
-        };
-      }
 
       // Check if webhook recipient already exists
       const existingRecipientId = await kv.app.get("webhook_recipient_id");
@@ -71,59 +62,38 @@ export const app = defineApp({
       const webhookSecret = generateWebhookSecret();
       await kv.app.set({ key: "webhook_secret", value: webhookSecret });
 
-      try {
-        const recipientResponse = await fetch(`${baseUrl}/1/recipients`, {
-          method: "POST",
-          headers: {
-            "X-Honeycomb-Team": apiKey,
-            "Content-Type": "application/json",
+      const recipientResult = await honeycombFetch<{ id: string }>({
+        method: "POST",
+        apiKey,
+        baseUrl,
+        endpoint: "/1/recipients",
+        body: {
+          type: "webhook",
+          details: {
+            webhook_name: `spacelift-flows-${crypto.randomUUID()}`,
+            webhook_url: `${input.app.http.url}/webhook?secret=${webhookSecret}`,
+            webhook_secret: webhookSecret,
           },
-          body: JSON.stringify({
-            type: "webhook",
-            details: {
-              webhook_name: `spacelift-flows-${crypto.randomUUID()}`,
-              webhook_url: `${input.app.http.url}/webhook?secret=${webhookSecret}`,
-              webhook_secret: webhookSecret,
-            },
-          }),
-        });
+        },
+      });
 
-        if (!recipientResponse.ok) {
-          const errorText = await recipientResponse.text();
-          const errorMsg = `Webhook recipient creation failed: ${recipientResponse.status} ${recipientResponse.statusText} - ${errorText}`;
-          console.error(errorMsg);
-          return {
-            newStatus: "failed" as const,
-            customStatusDescription: "Webhook recipient creation failed",
-          };
-        }
+      const recipientId = recipientResult.id;
+      console.log(
+        `Webhook recipient created successfully with ID: ${recipientId}`,
+      );
 
-        const recipientResult = await recipientResponse.json();
-        const recipientId = recipientResult.id;
-        console.log(
-          `Webhook recipient created successfully with ID: ${recipientId}`,
-        );
-
-        await kv.app.set({ key: "webhook_recipient_id", value: recipientId });
-        console.log(`Stored webhook recipient ID: ${recipientId}`);
-      } catch (webhookError) {
-        const errorMsg = `Failed to create webhook recipient: ${webhookError instanceof Error ? webhookError.message : String(webhookError)}`;
-        console.error(errorMsg);
-        return {
-          newStatus: "failed" as const,
-          customStatusDescription: "Failed to create webhook recipient",
-        };
-      }
+      await kv.app.set({ key: "webhook_recipient_id", value: recipientId });
+      console.log(`Stored webhook recipient ID: ${recipientId}`);
 
       return {
         newStatus: "ready" as const,
       };
     } catch (error) {
-      const errorMsg = `Failed to validate Honeycomb API credentials: ${error instanceof Error ? error.message : String(error)}`;
-      console.error(errorMsg);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
       return {
         newStatus: "failed" as const,
-        customStatusDescription: "Failed to validate Honeycomb API credentials",
+        customStatusDescription: message,
       };
     }
   },
@@ -147,43 +117,34 @@ export const app = defineApp({
 
       console.log(`Attempting to delete webhook recipient: ${recipientId}`);
 
-      const deleteResponse = await fetch(
-        `${baseUrl}/1/recipients/${recipientId}`,
-        {
+      try {
+        await honeycombFetch({
           method: "DELETE",
-          headers: {
-            "X-Honeycomb-Team": apiKey,
-          },
-        },
-      );
-
-      if (!deleteResponse.ok) {
-        if (deleteResponse.status === 404) {
+          apiKey,
+          baseUrl,
+          endpoint: `/1/recipients/${recipientId}`,
+        });
+        console.log(`Successfully deleted webhook recipient: ${recipientId}`);
+      } catch (error) {
+        // Treat 404 as success since the recipient is already gone
+        if (error instanceof HoneycombApiError && error.statusCode === 404) {
           console.log(
             `Webhook recipient ${recipientId} not found (404) - treating as already deleted`,
           );
         } else {
-          const errorText = await deleteResponse.text();
-          const errorMsg = `Failed to delete webhook recipient: ${deleteResponse.status} ${deleteResponse.statusText} - ${errorText}`;
-          console.error(errorMsg);
-          return {
-            newStatus: "draining_failed" as const,
-            customStatusDescription: errorMsg,
-          };
+          throw error;
         }
-      } else {
-        console.log(`Successfully deleted webhook recipient: ${recipientId}`);
       }
 
       await kv.app.delete(["webhook_recipient_id"]);
       await kv.app.delete(["webhook_secret"]);
       console.log("Cleaned up stored webhook data");
     } catch (error) {
-      const errorMsg = `Error during webhook cleanup: ${error instanceof Error ? error.message : String(error)}`;
-      console.error(errorMsg);
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(message);
       return {
         newStatus: "draining_failed" as const,
-        customStatusDescription: errorMsg,
+        customStatusDescription: message,
       };
     }
 

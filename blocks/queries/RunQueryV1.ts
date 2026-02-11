@@ -1,4 +1,5 @@
 import { AppBlock, events } from "@slflows/sdk/v1";
+import { honeycombFetch } from "../../utils/honeycombFetch";
 
 const MAX_POLL_DURATION_MS = 15_000;
 const POLL_INTERVAL_MS = 500;
@@ -36,26 +37,14 @@ export const runQueryV1: AppBlock = {
         const queryId = config.query_id as string;
 
         // Step 1: Run the query asynchronously
-        const runResponse = await fetch(
-          `${baseUrl}/1/query_results/${datasetSlug}`,
-          {
-            method: "POST",
-            headers: {
-              "X-Honeycomb-Team": apiKey,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ query_id: queryId }),
-          },
-        );
+        const runResult = await honeycombFetch<{ id: string }>({
+          method: "POST",
+          apiKey,
+          baseUrl,
+          endpoint: `/1/query_results/${datasetSlug}`,
+          body: { query_id: queryId },
+        });
 
-        if (!runResponse.ok) {
-          const errorText = await runResponse.text();
-          throw new Error(
-            `Failed to run query: ${runResponse.status} ${runResponse.statusText} - ${errorText}`,
-          );
-        }
-
-        const runResult = await runResponse.json();
         const queryResultId = runResult.id;
 
         // Step 2: Poll until complete or timeout (15 seconds)
@@ -64,24 +53,12 @@ export const runQueryV1: AppBlock = {
         const startTime = Date.now();
 
         while (Date.now() - startTime < MAX_POLL_DURATION_MS) {
-          const pollResponse = await fetch(
-            `${baseUrl}/1/query_results/${datasetSlug}/${queryResultId}`,
-            {
-              method: "GET",
-              headers: {
-                "X-Honeycomb-Team": apiKey,
-              },
-            },
-          );
-
-          if (!pollResponse.ok) {
-            const errorText = await pollResponse.text();
-            throw new Error(
-              `Failed to poll query result: ${pollResponse.status} ${pollResponse.statusText} - ${errorText}`,
-            );
-          }
-
-          const pollResult = await pollResponse.json();
+          const pollResult = await honeycombFetch<{ complete: boolean }>({
+            method: "GET",
+            apiKey,
+            baseUrl,
+            endpoint: `/1/query_results/${datasetSlug}/${queryResultId}`,
+          });
 
           if (pollResult.complete) {
             await events.emit(pollResult);

@@ -1,4 +1,5 @@
 import { AppBlock, events } from "@slflows/sdk/v1";
+import { honeycombFetch } from "../../utils/honeycombFetch";
 
 export const createEventV1: AppBlock = {
   name: "Create Events",
@@ -42,23 +43,14 @@ export const createEventV1: AppBlock = {
         const config = input.event.inputConfig;
         const datasetSlug = config.dataset_slug as string;
 
-        const response = await fetch(`${baseUrl}/1/batch/${datasetSlug}`, {
+        const result = await honeycombFetch({
           method: "POST",
-          headers: {
-            "X-Honeycomb-Team": apiKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(config.batch),
+          apiKey,
+          baseUrl,
+          endpoint: `/1/batch/${datasetSlug}`,
+          body: config.batch,
         });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `Failed to send events: ${response.status} ${response.statusText} - ${errorText}`,
-          );
-        }
-
-        const result = await response.json();
         await events.emit(result);
       },
     },

@@ -2,7 +2,8 @@ import { AppBlock, events } from "@slflows/sdk/v1";
 
 export const subscribeToTriggerV1: AppBlock = {
   name: "Subscribe to Trigger",
-  description: "Subscribe to Honeycomb trigger events and alerts. Use the recipient created by app configuration to receive trigger notifications.",
+  description:
+    "Subscribe to Honeycomb trigger events and alerts. Use the recipient created by app configuration to receive trigger notifications.",
   category: "Triggers",
   config: {
     trigger_id: {
