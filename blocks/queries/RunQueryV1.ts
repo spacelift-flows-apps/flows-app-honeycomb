@@ -15,14 +15,14 @@ export const runQueryV1: AppBlock = {
       name: "Execute Query",
       description: "Run a Honeycomb query by ID and return results",
       config: {
-        dataset_slug: {
+        datasetSlug: {
           name: "Dataset Slug",
           description:
             "The slug of the dataset to query, or '__all__' for environment-wide queries",
           type: "string",
           required: true,
         },
-        query_id: {
+        queryId: {
           name: "Query ID",
           description: "The ID of an existing query to run",
           type: "string",

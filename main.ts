@@ -139,7 +139,8 @@ export const app = defineApp({
   http: {
     onRequest: async (input: any) => {
       // Validate the webhook secret from the Honeycomb header
-      const requestedSecret = input.request.headers?.["X-Honeycomb-Webhook-Token"];
+      const requestedSecret =
+        input.request.headers?.["X-Honeycomb-Webhook-Token"];
       console.log(requestedSecret);
       const storedSecretPair = await kv.app.get("webhook_secret");
       const storedSecret = storedSecretPair?.value;
@@ -175,13 +176,13 @@ export const app = defineApp({
         const matchingEntityIds = entityList.blocks
           .filter((entity) => {
             // If block has no trigger_id filter, match all events
-            if (!entity.config.trigger_id) {
+            if (!entity.config.triggerId) {
               return true;
             }
 
             // If block has a filter, only match if payload has a matching id
             const triggerId = payload.id as string;
-            return triggerId && entity.config.trigger_id === triggerId;
+            return triggerId && entity.config.triggerId === triggerId;
           })
           .map((entity) => entity.id);
 
@@ -197,7 +198,6 @@ export const app = defineApp({
 
         await http.respond(input.request.requestId, {
           statusCode: 200,
-          body: { success: true, matched_blocks: matchingEntityIds.length },
         });
       } catch (error) {
         console.error("Error processing Honeycomb webhook:", error);

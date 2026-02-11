@@ -12,7 +12,7 @@ export const createEventV1: AppBlock = {
       name: "Send Events",
       description: "Send a batch of events to Honeycomb",
       config: {
-        dataset_slug: {
+        datasetSlug: {
           name: "Dataset Slug",
           description: "The slug of the dataset to send events to",
           type: "string",

@@ -6,7 +6,7 @@ export const subscribeToTriggerV1: AppBlock = {
     "Subscribe to Honeycomb trigger events and alerts. Use the recipient created by app configuration to receive trigger notifications.",
   category: "Triggers",
   config: {
-    trigger_id: {
+    triggerId: {
       name: "Trigger ID",
       description:
         "Specific trigger ID to listen to (optional - if not provided, listens to all triggers)",
