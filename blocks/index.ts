@@ -1,32 +1,21 @@
-/**
- * Block Registry for {{APP_NAME}}
- *
- * This file exports all blocks as a dictionary for easy registration.
- *
- * Usage in main.ts:
- *   import { blocks } from "./blocks/index.ts";
- *   export const app: App = {
- *     blocks: Object.values(blocks)
- *   };
- *
- * Adding new blocks:
- * 1. Create your block file (e.g., myBlock.ts)
- * 2. Import and add it to the blocks dictionary below
- * 3. Export it for type safety and external use
- */
+// Events
+import { createEventV1 } from "./events/CreateEventV1";
 
-import { exampleBlock } from "./exampleBlock";
+// Queries
+import { runQueryV1 } from "./queries/RunQueryV1";
 
-/**
- * Dictionary of all available blocks
- * Key: block identifier (for programmatic access)
- * Value: block definition
- */
+// Triggers
+import { subscribeToTriggerV1 } from "./triggers/SubscribeToTriggerV1";
+
+export { createEventV1, runQueryV1, subscribeToTriggerV1 };
+
 export const blocks = {
-  example: exampleBlock,
-  // Add more blocks here:
-  // myNewBlock: myNewBlock,
-} as const;
+  // Events
+  createEventV1,
 
-// Named exports for individual blocks (optional, for external imports)
-export { exampleBlock };
+  // Queries
+  runQueryV1,
+
+  // Triggers
+  subscribeToTriggerV1,
+} as const;
