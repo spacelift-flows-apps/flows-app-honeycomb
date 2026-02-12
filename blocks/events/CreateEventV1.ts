@@ -41,7 +41,7 @@ export const createEventV1: AppBlock = {
         const apiKey = input.app.config.apiKey as string;
         const baseUrl = input.app.config.baseUrl as string;
         const config = input.event.inputConfig;
-        const datasetSlug = config.dataset_slug as string;
+        const datasetSlug = config.datasetSlug as string;
 
         const result = await honeycombFetch({
           method: "POST",
