@@ -6,8 +6,7 @@ const POLL_INTERVAL_MS = 500;
 
 export const runQueryV1: AppBlock = {
   name: "Run Query",
-  description:
-    `Run an existing query by ID and poll for results. Takes a dataset slug and query ID, creates a query result, and polls until complete (max 15 seconds). Query data must be within the past 7 days. Required enterprise plan.`,
+  description: `Run an existing query by ID and poll for results. Takes a dataset slug and query ID, creates a query result, and polls until complete (max 15 seconds). Query data must be within the past 7 days. Required enterprise plan.`,
   category: "Queries",
 
   inputs: {
